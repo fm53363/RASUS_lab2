@@ -1,5 +1,7 @@
 package hr.fer.tel.rassus.stupidudp.Node;
 
+import hr.fer.tel.rassus.stupidudp.kafka.KafkaConsumer;
+import hr.fer.tel.rassus.stupidudp.kafka.KafkaProducer;
 import hr.fer.tel.rassus.stupidudp.mapper.SensorMapper;
 import hr.fer.tel.rassus.stupidudp.model.Sensor;
 import hr.fer.tel.rassus.stupidudp.model.SensorFactory;
@@ -12,7 +14,6 @@ import java.net.SocketException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 
 public class Main {
     static final List<String> CONSUMER_TOPICS = List.of("Command","Register");
@@ -37,6 +38,7 @@ public class Main {
             }
         });
     }
+
     public static Thread kafkaConsumerThread() {
         return new Thread(() -> {
             while (true) {
@@ -72,11 +74,14 @@ public class Main {
         try {
             UDPServer = new StupidUDPServer(0);  // stvori udp server
             currentSensor = SensorFactory.createSensor("localhost", UDPServer.getPort()); // stvori trenutni senzor
-            consumer = new KafkaConsumer(CONSUMER_TOPICS);
+            consumer = new KafkaConsumer(CONSUMER_TOPICS, currentSensor.id());
             producer  = new KafkaProducer(PRODUCER_TOPICS);
+
+            System.out.println(currentSensor);
 
             udpServerThread().start();
             kafkaConsumerThread().start();
+
 
 
 

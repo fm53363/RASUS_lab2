@@ -1,4 +1,4 @@
-package hr.fer.tel.rassus.stupidudp.Node;
+package hr.fer.tel.rassus.stupidudp.kafka;
 
 import java.util.Properties;
 
@@ -19,6 +19,7 @@ public class KafkaProducer {
         producerProperties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         producerProperties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         this.producer = new org.apache.kafka.clients.producer.KafkaProducer<>(producerProperties);
+        System.out.println("Starting kafka producer...");
     }
 
     public void sendData(String data) {
