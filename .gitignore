@@ -1,5 +1,5 @@
-.gradle
-**/build/
+2lab-template-main/.gradle
+2lab-template-main/build/
 !src/**/build/
 
 # Ignore Gradle GUI config
