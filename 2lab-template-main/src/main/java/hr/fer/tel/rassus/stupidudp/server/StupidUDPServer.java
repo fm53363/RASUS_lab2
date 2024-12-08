@@ -8,6 +8,7 @@ import hr.fer.tel.rassus.stupidudp.network.SimpleSimulatedDatagramSocket;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
+import java.net.SocketException;
 
 /**
  *
@@ -15,20 +16,28 @@ import java.net.DatagramSocket;
  */
 public class StupidUDPServer {
 
-    static final int PORT = 10001; // server port
+    private int port;
+    private DatagramSocket socket;
 
-    /**
-     * @param args the command line arguments
-     */
-    public static void main(String args[]) throws IOException {
+    public int getPort() {
+        return this.port;
+    }
 
+    public StupidUDPServer(int port) throws SocketException {
+        // create a UDP socket and bind it to the specified port on the local
+        // host
+       this.socket = new SimpleSimulatedDatagramSocket(port, 0.2, 200);
+        this.port = socket.getLocalPort();
+        //SOCKET -> BIND
+    }
+
+
+    public void startServer () throws IOException {
         byte[] rcvBuf = new byte[256]; // received bytes
         byte[] sendBuf = new byte[256];// sent bytes
         String rcvStr;
 
-        // create a UDP socket and bind it to the specified port on the local
-        // host
-        DatagramSocket socket = new SimpleSimulatedDatagramSocket(PORT, 0.2, 200); //SOCKET -> BIND
+        System.out.println("Starting UDP server...");
 
         while (true) { //OBRADA ZAHTJEVA
             // create a DatagramPacket for receiving packets
