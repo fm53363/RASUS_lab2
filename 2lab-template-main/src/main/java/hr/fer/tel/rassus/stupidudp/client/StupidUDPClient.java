@@ -6,37 +6,49 @@ package hr.fer.tel.rassus.stupidudp.client;
 
 import hr.fer.tel.rassus.stupidudp.network.*;
 import java.io.IOException;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.InetAddress;
-import java.net.SocketTimeoutException;
+import java.net.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+
+import hr.fer.tel.rassus.stupidudp.model.Sensor;
 /**
  *
  * @author Krešimir Pripužić <kresimir.pripuzic@fer.hr>
  */
 public class StupidUDPClient {
 
-    static final int PORT = 10001; // server port
 
-    public static void main(String args[]) throws IOException {
+    private int serverPort;
+    private DatagramSocket socket;
+    private InetAddress address;
 
-        String sendString = "Any string...";
+    private double lossRate;
+    private int averageDelay;
 
+    public StupidUDPClient(Sensor server, double lossRate, int averageDelay) throws UnknownHostException, SocketException {
+        this.serverPort = server.port();
+
+        // determine the IP address of a host, given the host's name
+        this.address = InetAddress.getByName(server.address());
+
+        this.lossRate = lossRate;
+        this.averageDelay = averageDelay;
+
+        // create a datagram socket and bind it to any available
+        // port on the local host
+        //DatagramSocket socket = new SimulatedDatagramSocket(0.2, 1, 200, 50); //SOCKET
+        this.socket = new SimpleSimulatedDatagramSocket(lossRate, averageDelay);
+        System.out.println("Starting client that sends to server: " + server);
+    }
+
+
+    public void send(String sendString) throws IOException {
         byte[] rcvBuf = new byte[256]; // received bytes
 
         // encode this String into a sequence of bytes using the platform's
         // default charset and store it into a new byte array
 
-        // determine the IP address of a host, given the host's name
-        InetAddress address = InetAddress.getByName("localhost");
-
-        // create a datagram socket and bind it to any available
-        // port on the local host
-        //DatagramSocket socket = new SimulatedDatagramSocket(0.2, 1, 200, 50); //SOCKET
-        DatagramSocket socket = new SimpleSimulatedDatagramSocket(0.2, 200); //SOCKET
 
         System.out.print("Client sends: ");
         // send each character as a separate datagram packet
@@ -46,7 +58,7 @@ public class StupidUDPClient {
 
             // create a datagram packet for sending data
             DatagramPacket packet = new DatagramPacket(sendBuf, sendBuf.length,
-                    address, PORT);
+                    address, this.serverPort);
 
             // send a datagram packet from this socket
             socket.send(packet); //SENDTO

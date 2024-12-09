@@ -1,5 +1,6 @@
 package hr.fer.tel.rassus.stupidudp.Node;
 
+import hr.fer.tel.rassus.stupidudp.client.StupidUDPClient;
 import hr.fer.tel.rassus.stupidudp.kafka.KafkaConsumer;
 import hr.fer.tel.rassus.stupidudp.kafka.KafkaProducer;
 import hr.fer.tel.rassus.stupidudp.mapper.SensorMapper;
@@ -11,11 +12,14 @@ import org.json.JSONObject;
 
 import java.io.IOException;
 import java.net.SocketException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.net.UnknownHostException;
+import java.util.*;
 
 public class Main {
+
+    static final double LOSS_RATE = 0.3;
+    static  final int AVERAGE_DELAY = 1000;
+
     static final List<String> CONSUMER_TOPICS = List.of("Command","Register");
     static final String PRODUCER_TOPICS = "Register";
 
@@ -26,8 +30,11 @@ public class Main {
     static KafkaConsumer consumer;
     static KafkaProducer producer;
 
-    static final List<Sensor>  neighbours = Collections.synchronizedList(new ArrayList<>());
+
+    static final List<StupidUDPClient> clients = Collections.synchronizedList(new ArrayList<>());
+
     static boolean FINSIHED = false;
+
 
     public static Thread udpServerThread() {
         return new Thread(() -> {
@@ -44,8 +51,8 @@ public class Main {
             while (true) {
                 ConsumerRecords<String,String> consumerRecords =  consumer.poll(1000);
 
-                for(var record : consumerRecords) { //  obrada porkuek ovisno o temi
-                    System.out.println(record.value());
+                for(var record : consumerRecords) { //  obrada poruke ovisno o temi
+                    System.err.println("    " + record.value());
                     if(record.topic().equals("Command") ) {
                         String value = record.value();
                         if(value.equals("Start")) {
@@ -57,9 +64,14 @@ public class Main {
                     }
                     else if(record.topic().equals("Register")) {
                         Sensor tmp  = SensorMapper.toSensor(new JSONObject(record.value()));
-                        if(currentSensor.equals(tmp)) {
-                            synchronized (neighbours) {
-                                neighbours.add(tmp);
+                        if(!currentSensor.equals(tmp)) {
+                            synchronized (clients) {
+                                try {
+                                    clients.add( new StupidUDPClient(tmp,LOSS_RATE,AVERAGE_DELAY));
+                                } catch (UnknownHostException | SocketException e) {
+                                    throw new RuntimeException(e);
+                                }
+
                             }
                         }
                     }
@@ -86,19 +98,18 @@ public class Main {
 
 
 
+            // thread
+
+
+            udpServerThread().join();
+            kafkaConsumerThread().join();
 
 
 
 
-
-        } catch (SocketException e) {
+        } catch (SocketException | InterruptedException  e) {
             throw new RuntimeException(e);
         }
-
-
-
-
-
 
 
     }
