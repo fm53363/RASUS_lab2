@@ -19,10 +19,11 @@ public class KafkaProducer {
         producerProperties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         producerProperties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         this.producer = new org.apache.kafka.clients.producer.KafkaProducer<>(producerProperties);
-        System.out.println("Starting kafka producer...");
+        System.err.println("Starting kafka producer...");
     }
 
     public void sendData(String data) {
+        System.err.println("Sending data (kafka producer):: " + data);
         ProducerRecord<String, String> record = new ProducerRecord<>(topic, null, data);
         producer.send(record);
         producer.flush();

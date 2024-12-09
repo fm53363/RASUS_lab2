@@ -6,6 +6,7 @@ import java.util.Properties;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.serialization.StringDeserializer;
 
@@ -27,11 +28,19 @@ public class KafkaConsumer {
         consumerProperties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
         this.consumer = new org.apache.kafka.clients.consumer.KafkaConsumer<>(consumerProperties);
         consumer.subscribe(topics);
-        System.out.println("Starting consumer for topics " + topics);
+        System.err.println("Starting consumer for topics " + topics);
     }
 
     public ConsumerRecords<String, String> poll(int timeout) {
-        return consumer.poll(Duration.ofMillis(timeout));
+
+        var records = consumer.poll(Duration.ofMillis(timeout));
+        if (!records.isEmpty()) {
+            System.err.println("    Received " + records.count() + " records");
+        }
+        for (ConsumerRecord<String, String> record : records) {
+            System.err.println("    "+record.value());
+        }
+        return records;
     }
 
     public void commitAsync(){

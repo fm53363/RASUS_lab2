@@ -24,7 +24,7 @@ public class SensorMapper {
 
         return json;
     }
-    public static String toString(Sensor sensor) {
+    public static String toJSONString(Sensor sensor) {
         return toJson(sensor).toString();
     }
 
