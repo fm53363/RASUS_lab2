@@ -16,6 +16,11 @@ dependencies {
     implementation 'org.apache.kafka:kafka-clients:3.8.1'
     implementation group: 'org.json', name: 'json', version: '20240303'
 
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.13.4.2'
+
+    implementation 'com.opencsv:opencsv:5.9'
+
+
 
 
 
