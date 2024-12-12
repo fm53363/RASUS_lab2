@@ -4,7 +4,7 @@ public class Reading {
 
     private int NO2;
 
-    public Reading(){
+    public Reading() {
 
     }
 
@@ -22,8 +22,8 @@ public class Reading {
 
     @Override
     public String toString() {
-        return "Reading{" +
-                "NO2=" + NO2 +
+        return "reading:{" +
+                "no2=" + NO2 +
                 '}';
     }
 }

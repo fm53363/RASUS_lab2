@@ -98,19 +98,23 @@ public class Main {
                 SensorPacket packet = new SensorPacket.Builder().
                         scalarTime(scalarClock.currentTimeMillis())
                         .vectorTime(vectorClock.updateVector(currentSensor.id()).getVector())
-                        .reading(r).build();
+                        .reading(r).
+                        build();
                 synchronized (clients) {
                     for (var client : clients) {
                         String msg = SensorPacketMapper.toJson(packet);
                         try {
                             client.send1(msg);
+                            while (!client.send1(msg)) {
+                                System.out.println("RETRANSMISIJA " + msg);
+                            }
                         } catch (IOException e) {
                             throw new RuntimeException(e);
                         }
                     }
                 }
                 try {
-                    Thread.sleep(4000); // Sleep for 1000 milliseconds (1 second)
+                    Thread.sleep(SEND_INTERVAL_MILLIS); // Sleep for 1000 milliseconds (1 second)
                 } catch (InterruptedException e) {
                     System.out.println("Thread was interrupted.");
                     break;
