@@ -4,35 +4,39 @@
  */
 package hr.fer.tel.rassus.stupidudp.server;
 
+import hr.fer.tel.rassus.stupidudp.mapper.SensorPacketMapper;
+import hr.fer.tel.rassus.stupidudp.model.SensorPacket;
 import hr.fer.tel.rassus.stupidudp.network.SimpleSimulatedDatagramSocket;
+
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.SocketException;
+import java.util.List;
 
 /**
- *
  * @author Krešimir Pripužić <kresimir.pripuzic@fer.hr>
  */
 public class StupidUDPServer {
 
     private int port;
     private DatagramSocket socket;
+    private double lossRate;
+    private int averageDelay;
+
+    public StupidUDPServer(int port, double lossRate, int averageDelay) throws SocketException {
+        // create a UDP socket and bind it to the specified port on the local
+        // host
+        this.socket = new SimpleSimulatedDatagramSocket(port, 0.2, 200);
+        this.port = socket.getLocalPort();
+        //SOCKET -> BIND
+    }
 
     public int getPort() {
         return this.port;
     }
 
-    public StupidUDPServer(int port) throws SocketException {
-        // create a UDP socket and bind it to the specified port on the local
-        // host
-       this.socket = new SimpleSimulatedDatagramSocket(port, 0.2, 200);
-        this.port = socket.getLocalPort();
-        //SOCKET -> BIND
-    }
-
-
-    public void startServer () throws IOException {
+    public void startServer(List<SensorPacket> list) throws IOException {
         byte[] rcvBuf = new byte[256]; // received bytes
         byte[] sendBuf = new byte[256];// sent bytes
         String rcvStr;
@@ -53,6 +57,13 @@ public class StupidUDPServer {
                     packet.getLength());
             System.out.println("Server received: " + rcvStr);
 
+            try {
+                SensorPacket rcvPacket = SensorPacketMapper.toSensorPacket(rcvStr);
+            } catch (Exception e) {
+                System.out.println("Error parsing packet: " + e.getMessage());
+            }
+            //list.add(SensorPacketMapper.toSensorPacket(rcvStr));
+
             // encode a String into a sequence of bytes using the platform's
             // default charset
             sendBuf = rcvStr.toUpperCase().getBytes();
@@ -64,6 +75,8 @@ public class StupidUDPServer {
 
             // send packet
             socket.send(sendPacket); //SENDTO
+
+
         }
     }
 }

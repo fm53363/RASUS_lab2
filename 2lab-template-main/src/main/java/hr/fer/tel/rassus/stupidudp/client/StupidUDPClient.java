@@ -4,22 +4,23 @@
  */
 package hr.fer.tel.rassus.stupidudp.client;
 
-import hr.fer.tel.rassus.stupidudp.network.*;
+import hr.fer.tel.rassus.stupidudp.model.Sensor;
+import hr.fer.tel.rassus.stupidudp.network.SimpleSimulatedDatagramSocket;
+
 import java.io.IOException;
 import java.net.*;
+import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-
-import hr.fer.tel.rassus.stupidudp.model.Sensor;
 /**
- *
  * @author Krešimir Pripužić <kresimir.pripuzic@fer.hr>
  */
 public class StupidUDPClient {
 
 
     private int serverPort;
+    private Sensor server;
     private DatagramSocket socket;
     private InetAddress address;
 
@@ -27,6 +28,7 @@ public class StupidUDPClient {
     private int averageDelay;
 
     public StupidUDPClient(Sensor server, double lossRate, int averageDelay) throws UnknownHostException, SocketException {
+        this.server = server;
         this.serverPort = server.port();
 
         // determine the IP address of a host, given the host's name
@@ -89,6 +91,63 @@ public class StupidUDPClient {
         System.out.println("Client received: " + receiveString);
 
         // close the datagram socket
-        socket.close(); //CLOSE
+        //socket.close(); //CLOSE
+    }
+
+    public void send1(String sendString) throws IOException {
+        byte[] rcvBuf = new byte[256]; // received bytes
+
+        // Encode the entire string into a byte array
+        byte[] sendBuf = sendString.getBytes();
+
+        System.out.println(this + " sends: " + sendString);
+
+        // Create a single datagram packet for sending the entire string
+        DatagramPacket packet = new DatagramPacket(sendBuf, sendBuf.length, address, this.serverPort);
+
+        // Send the datagram packet from this socket
+        socket.send(packet); // SENDTO
+
+        System.out.println("Packet sent.");
+
+        StringBuffer receiveString = new StringBuffer();
+
+        while (true) {
+            // Create a datagram packet for receiving data
+            DatagramPacket rcvPacket = new DatagramPacket(rcvBuf, rcvBuf.length);
+
+            try {
+                // Receive a datagram packet from this socket
+                socket.receive(rcvPacket); // RECVFROM
+            } catch (SocketTimeoutException e) {
+                System.out.println("client nije primio potvrdu za " + sendString);
+                break; // Exit the loop on timeout
+            } catch (IOException ex) {
+                Logger.getLogger(StupidUDPClient.class.getName()).log(Level.SEVERE, null, ex);
+            }
+
+            // Decode the received bytes and append them to the received string
+            receiveString.append(new String(rcvPacket.getData(), rcvPacket.getOffset(), rcvPacket.getLength()));
+        }
+
+        System.out.println(this + " received potvrdu za" + receiveString);
+    }
+
+    @Override
+    public String toString() {
+        return "Client(server id=" +
+                +server.id() + ") ";
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof StupidUDPClient that)) return false;
+        return Objects.equals(server, that.server);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(server);
     }
 }

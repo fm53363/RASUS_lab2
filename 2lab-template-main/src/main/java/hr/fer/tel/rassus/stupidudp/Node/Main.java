@@ -4,13 +4,15 @@ import hr.fer.tel.rassus.stupidudp.client.StupidUDPClient;
 import hr.fer.tel.rassus.stupidudp.kafka.KafkaConsumer;
 import hr.fer.tel.rassus.stupidudp.kafka.KafkaProducer;
 import hr.fer.tel.rassus.stupidudp.mapper.SensorMapper;
+import hr.fer.tel.rassus.stupidudp.mapper.SensorPacketMapper;
 import hr.fer.tel.rassus.stupidudp.model.Reading;
 import hr.fer.tel.rassus.stupidudp.model.Sensor;
-import hr.fer.tel.rassus.stupidudp.model.SensorFactory;
+import hr.fer.tel.rassus.stupidudp.model.SensorPacket;
+import hr.fer.tel.rassus.stupidudp.model.VectorClock;
+import hr.fer.tel.rassus.stupidudp.network.EmulatedSystemClock;
 import hr.fer.tel.rassus.stupidudp.repo.MySensorRepo;
 import hr.fer.tel.rassus.stupidudp.server.StupidUDPServer;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
-import org.json.JSONObject;
 
 import java.io.IOException;
 import java.net.SocketException;
@@ -19,59 +21,63 @@ import java.util.*;
 
 public class Main {
     // kafka
-    private static final List<String> CONSUMER_TOPICS = List.of("Command","Register");
+    private static final List<String> CONSUMER_TOPICS = List.of("Command", "Register");
     private static final String PRODUCER_TOPICS = "Register";
+    private static final double LOSS_RATE = 0.3;
+    private static final int AVERAGE_DELAY = 1000;
+    private static final long SEND_INTERVAL_MILLIS = 1000;
+
+
+    private static final Set<StupidUDPClient> clients = Collections.synchronizedSet(new HashSet<>());
+
+
     private static KafkaConsumer consumer;
     private static KafkaProducer producer;
-
-    //udp
     private static Sensor currentSensor;
-    private static final double LOSS_RATE = 0.3;
-    private static  final int AVERAGE_DELAY = 1000;
     private static StupidUDPServer UDPServer;
-    private static final List<StupidUDPClient> clients = Collections.synchronizedList(new ArrayList<>());
-    // synchronized collection ensures add and remove, not Iteration
-
-
-    //data
     private static MySensorRepo repo = MySensorRepo.getInstance();
-
     private static boolean FINSIHED = false;
-    private static final long SEND_INTERVAL_MILLIS = 1000;
+    private static EmulatedSystemClock scalarClock;
+    private static VectorClock vectorClock = new VectorClock();
+
+
+    private static List<SensorPacket> packets = Collections.synchronizedList(new ArrayList<>());
 
 
     private static Thread udpServerThread() {
         return new Thread(() -> {
             try {
-                UDPServer.startServer();
+                UDPServer.startServer(packets);
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
         });
     }
 
-    private  static Thread kafkaConsumerThread() {
+    private static Thread kafkaThread() {
         return new Thread(() -> {
             while (true) {
-                ConsumerRecords<String,String> consumerRecords =  consumer.poll(1000);
-                for(var record : consumerRecords) { //  obrada poruke ovisno o temi
-                    if(record.topic().equals("Command") ) {
+                ConsumerRecords<String, String> consumerRecords = consumer.poll(1000);
+                for (var record : consumerRecords) { //  obrada poruke ovisno o temi
+                    if (record.topic().equals("Command")) {
                         String value = record.value();
-                        if(value.equals("Start")) {
-                            producer.sendData(SensorMapper.toJSONString(currentSensor));
-                        }else if(value.equals("Stop")) {
+                        if (value.equals("Start")) {
+                            producer.sendData(SensorMapper.toJson(currentSensor));
+                        } else if (value.equals("Stop")) {
+                            // todo implement stopping mechanism
                             FINSIHED = true;
                         }
-                    }
-                    else if(record.topic().equals("Register")) {
-                        Sensor tmp  = SensorMapper.toSensor(new JSONObject(record.value()));
-                        if(!currentSensor.equals(tmp)) {
+                    } else if (record.topic().equals("Register")) {
+                        Sensor tmp = null;
+                        tmp = SensorMapper.toSensor(record.value());
+                        if (!currentSensor.equals(tmp)) {
                             try {
-                                clients.add( new StupidUDPClient(tmp,LOSS_RATE,AVERAGE_DELAY));
+                                clients.add(new StupidUDPClient(tmp, LOSS_RATE, AVERAGE_DELAY));
+                                System.err.println("Imam postavljeno klienta: " + clients.size());
+                                vectorClock.updateVector(tmp.id());
                             } catch (UnknownHostException | SocketException e) {
                                 throw new RuntimeException(e);
                             }
-
                         }
                     }
                 }
@@ -80,25 +86,31 @@ public class Main {
         });
     }
 
-
-
     private static Thread udpClientThread() {
         return new Thread(() -> {
             long startTime = System.currentTimeMillis(); // Get the current time in milliseconds
             long elapsedTime = 0;
-
             while (true) {
                 elapsedTime = (System.currentTimeMillis() - startTime) / 1000;
-                System.out.println("Elapsed time: " + elapsedTime + " seconds");
-
                 int currentReadingId = (int) elapsedTime % repo.getSize();
                 Reading r = repo.getReading(currentReadingId);
-
-                System.out.println(r);
-
-
+                // create Sensor Packet
+                SensorPacket packet = new SensorPacket.Builder().
+                        scalarTime(scalarClock.currentTimeMillis())
+                        .vectorTime(vectorClock.updateVector(currentSensor.id()).getVector())
+                        .reading(r).build();
+                synchronized (clients) {
+                    for (var client : clients) {
+                        String msg = SensorPacketMapper.toJson(packet);
+                        try {
+                            client.send1(msg);
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+                }
                 try {
-                    Thread.sleep(SEND_INTERVAL_MILLIS); // Sleep for 1000 milliseconds (1 second)
+                    Thread.sleep(4000); // Sleep for 1000 milliseconds (1 second)
                 } catch (InterruptedException e) {
                     System.out.println("Thread was interrupted.");
                     break;
@@ -109,33 +121,29 @@ public class Main {
 
     public static void main(String[] args) {
         try {
-            long startTime = System.currentTimeMillis();
+            Scanner scanner = new Scanner(System.in);
+            System.out.println("Enter sensor id:");
+            int id = scanner.nextInt();
 
+            scalarClock = new EmulatedSystemClock();
 
-            UDPServer = new StupidUDPServer(0);  // stvori udp server
-            currentSensor = SensorFactory.createSensor("localhost", UDPServer.getPort()); // stvori trenutni senzor
+            UDPServer = new StupidUDPServer(0, LOSS_RATE, AVERAGE_DELAY);  // stvori udp server
+            currentSensor = new Sensor(id, "localhost", UDPServer.getPort()); // stvori trenutni senzor
             consumer = new KafkaConsumer(CONSUMER_TOPICS, currentSensor.id());
-            producer  = new KafkaProducer(PRODUCER_TOPICS);
+            producer = new KafkaProducer(PRODUCER_TOPICS);
 
             System.out.println(currentSensor);
 
             udpServerThread().start();
-            kafkaConsumerThread().start();
-
-
-
+            kafkaThread().start();
             udpClientThread().start();
 
             // thread
-
-
             udpServerThread().join();
-            kafkaConsumerThread().join();
+            kafkaThread().join();
 
 
-
-
-        } catch (SocketException | InterruptedException  e) {
+        } catch (SocketException | InterruptedException e) {
             throw new RuntimeException(e);
         }
 
