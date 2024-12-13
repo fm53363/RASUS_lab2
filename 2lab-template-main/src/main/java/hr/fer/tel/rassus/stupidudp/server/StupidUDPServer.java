@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.SocketException;
+import java.util.Collection;
 import java.util.List;
 
 /**
@@ -26,8 +27,7 @@ public class StupidUDPServer {
     private int averageDelay;
 
     private VectorClock vectorClock;
-    private List<SensorPacket> packets;
-    private List<SensorPacket> intervalPackets;
+    private Collection<SensorPacket> intervalPackets;
 
     public StupidUDPServer(int port, double lossRate, int averageDelay) throws SocketException {
         // create a UDP socket and bind it to the specified port on the local
@@ -40,15 +40,12 @@ public class StupidUDPServer {
         //SOCKET -> BIND
     }
 
+
     public void setVectorClock(VectorClock vectorClock) {
         this.vectorClock = vectorClock;
     }
 
-    public void setPackets(List<SensorPacket> packets) {
-        this.packets = packets;
-    }
-
-    public void setIntervalPackets(List<SensorPacket> intervalPackets) {
+    public void setIntervalPackets(Collection<SensorPacket> intervalPackets) {
         this.intervalPackets = intervalPackets;
     }
 
@@ -81,7 +78,6 @@ public class StupidUDPServer {
                 SensorPacket rcvPacket = SensorPacketMapper.toSensorPacket(rcvStr);
                 this.vectorClock.updateAfterReceiving(rcvPacket.getVectorClock());
                 this.intervalPackets.add(rcvPacket);
-                this.packets.add(rcvPacket);
             } catch (Exception e) {
                 System.out.println("    Error parsing packet: " + e.getMessage());
             }

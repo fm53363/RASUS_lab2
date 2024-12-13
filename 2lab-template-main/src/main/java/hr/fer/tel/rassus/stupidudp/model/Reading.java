@@ -1,5 +1,7 @@
 package hr.fer.tel.rassus.stupidudp.model;
 
+import java.util.Objects;
+
 public class Reading {
 
     private int NO2;
@@ -18,6 +20,19 @@ public class Reading {
 
     public void setNO2(int NO2) {
         this.NO2 = NO2;
+    }
+
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Reading reading)) return false;
+        return NO2 == reading.NO2;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(NO2);
     }
 
     @Override

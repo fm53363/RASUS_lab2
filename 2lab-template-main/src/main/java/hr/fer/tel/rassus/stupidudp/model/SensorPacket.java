@@ -1,6 +1,8 @@
 package hr.fer.tel.rassus.stupidudp.model;
 
 
+import java.util.Objects;
+
 public class SensorPacket {
     private Reading reading;
     private VectorClock vectorClock;
@@ -37,5 +39,26 @@ public class SensorPacket {
 
     public void setScalarClock(long scalarClock) {
         this.scalarClock = scalarClock;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof SensorPacket that)) return false;
+        return scalarClock == that.scalarClock && Objects.equals(reading, that.reading) && Objects.equals(vectorClock, that.vectorClock);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(reading, vectorClock, scalarClock);
+    }
+
+    @Override
+    public String toString() {
+        return "SensorPacket{" +
+                "reading=" + reading +
+                ", vectorClock=" + vectorClock +
+                ", scalarClock=" + scalarClock +
+                '}';
     }
 }

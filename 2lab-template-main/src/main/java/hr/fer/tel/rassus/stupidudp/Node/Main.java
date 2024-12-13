@@ -26,7 +26,7 @@ public class Main {
     private static final double LOSS_RATE = 0.3;
     private static final int AVERAGE_DELAY = 1000;
     private static final long SEND_INTERVAL_MILLIS = 1000;
-    private static final long PRINT_INTERVAL_MILLIS = 5000;
+    private static final long SORT_INTERVAL_MILLIS = 5000;
     private static final Set<StupidUDPClient> clients = Collections.synchronizedSet(new HashSet<>());
 
 
@@ -39,7 +39,7 @@ public class Main {
     private static EmulatedSystemClock scalarClock;
     private static VectorClock vectorClock;
     private static List<SensorPacket> packets = Collections.synchronizedList(new LinkedList<>());
-    private static List<SensorPacket> intervalPackets = Collections.synchronizedList(new LinkedList<>());
+    private static Set<SensorPacket> intervalPackets = Collections.synchronizedSet(new HashSet<>());
 
 
     private static Thread udpServerThread() {
@@ -122,6 +122,25 @@ public class Main {
         });
     }
 
+    private static Thread sortingAndAveragingThread() {
+        return new Thread(() -> {
+            while (true) {
+                synchronized (intervalPackets) {
+                    System.out.println("\n INTERVAL PACKETS");
+                    intervalPackets.forEach(System.out::println);
+                    System.out.println("\n");
+                }
+
+
+                try {
+                    Thread.sleep(SORT_INTERVAL_MILLIS);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        });
+    }
+
     public static void main(String[] args) {
         try {
             Scanner scanner = new Scanner(System.in);
@@ -129,19 +148,11 @@ public class Main {
             int id = scanner.nextInt();
 
             scalarClock = new EmulatedSystemClock();
-
-
             UDPServer = new StupidUDPServer(0, LOSS_RATE, AVERAGE_DELAY);// stvori udp server
             currentSensor = new Sensor(id, "localhost", UDPServer.getPort());// stvori trenutni senzor
             vectorClock = new VectorClock(currentSensor.id());
-
-
             UDPServer.setVectorClock(vectorClock);
             UDPServer.setIntervalPackets(intervalPackets);
-            UDPServer.setPackets(packets);
-
-            //UDPServer = new StupidUDPServer(0, LOSS_RATE, AVERAGE_DELAY, vectorClock, packets, intervalPackets);// stvori udp server
-
 
             consumer = new KafkaConsumer(CONSUMER_TOPICS, currentSensor.id());
             producer = new KafkaProducer(PRODUCER_TOPICS);
@@ -151,10 +162,13 @@ public class Main {
             udpServerThread().start();
             kafkaThread().start();
             udpClientThread().start();
+            sortingAndAveragingThread().start();
 
             // thread
             udpServerThread().join();
             kafkaThread().join();
+            udpClientThread().join();
+            sortingAndAveragingThread().join();
 
 
         } catch (SocketException | InterruptedException e) {
