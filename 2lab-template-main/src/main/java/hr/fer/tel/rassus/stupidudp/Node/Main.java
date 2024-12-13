@@ -18,6 +18,7 @@ import java.io.IOException;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class Main {
     // kafka
@@ -30,13 +31,16 @@ public class Main {
     private static final Set<StupidUDPClient> clients = Collections.synchronizedSet(new HashSet<>());
 
 
+    private static final AtomicBoolean stopFlag = new AtomicBoolean(false);
+
+
     private static KafkaConsumer consumer;
     private static KafkaProducer producer;
     private static Sensor currentSensor;
     private static StupidUDPServer UDPServer;
     private static MySensorRepo repo = MySensorRepo.getInstance();
-    private static boolean FINSIHED = false;
-    private static EmulatedSystemClock scalarClock;
+    private static EmulatedSystemClock scalarClockGen;
+    private static long scalarClock;
     private static volatile VectorClock vectorClock;
     private static List<SensorPacket> packets = Collections.synchronizedList(new LinkedList<>());
     private static Set<SensorPacket> intervalPackets = Collections.synchronizedSet(new HashSet<>());
@@ -54,7 +58,7 @@ public class Main {
 
     private static Thread kafkaThread() {
         return new Thread(() -> {
-            while (true) {
+            while (!stopFlag.get()) {
                 ConsumerRecords<String, String> consumerRecords = consumer.poll(1000);
                 for (var record : consumerRecords) { //  obrada poruke ovisno o temi
                     if (record.topic().equals("Command")) {
@@ -62,8 +66,16 @@ public class Main {
                         if (value.equals("Start")) {
                             producer.sendData(SensorMapper.toJson(currentSensor));
                         } else if (value.equals("Stop")) {
-                            // todo implement stopping mechanism
-                            FINSIHED = true;
+                            synchronized (clients) {
+                                for (var client : clients) {
+                                    client.close();
+                                }
+                                System.out.println("ispis");
+                                synchronized (packets) {
+                                    packets.forEach(System.out::println);
+
+                                }
+                            }
                         }
                     } else if (record.topic().equals("Register")) {
                         Sensor tmp = null;
@@ -88,7 +100,7 @@ public class Main {
         return new Thread(() -> {
             long startTime = System.currentTimeMillis(); // Get the current time in milliseconds
             long elapsedTime = 0;
-            while (true) {
+            while (!stopFlag.get()) {
                 elapsedTime = (System.currentTimeMillis() - startTime) / 1000;
                 int currentReadingId = (int) elapsedTime % repo.getSize();
 
@@ -98,7 +110,8 @@ public class Main {
                         Reading r = repo.getReading(currentReadingId);
                         // create Sensor Packet
                         vectorClock.updateBeforeSending();
-                        SensorPacket packet = new SensorPacket(r, vectorClock, scalarClock.currentTimeMillis());
+                        scalarClock = scalarClockGen.currentTimeMillis();
+                        SensorPacket packet = new SensorPacket(r, vectorClock, scalarClock);
                         for (var client : clients) {
                             String msg = SensorPacketMapper.toJson(packet);
                             try {
@@ -124,12 +137,14 @@ public class Main {
 
     private static Thread sortingAndAveragingThread() {
         return new Thread(() -> {
-            while (true) {
+            while (!stopFlag.get()) {
                 synchronized (intervalPackets) {
                     if (!intervalPackets.isEmpty()) {
                         System.out.println("\n INTERVAL PACKETS");
                         intervalPackets.forEach(System.out::println);
                         System.out.println("\n");
+                        packets.addAll(intervalPackets);
+                        intervalPackets.clear();
                     }
 
                 }
@@ -150,12 +165,15 @@ public class Main {
             System.out.println("Enter sensor id:");
             int id = scanner.nextInt();
 
-            scalarClock = new EmulatedSystemClock();
+            scalarClockGen = new EmulatedSystemClock();
+            scalarClock = scalarClockGen.currentTimeMillis();
+
             UDPServer = new StupidUDPServer(0, LOSS_RATE, AVERAGE_DELAY);// stvori udp server
             currentSensor = new Sensor(id, "localhost", UDPServer.getPort());// stvori trenutni senzor
             vectorClock = new VectorClock(currentSensor.id());
             UDPServer.setVectorClock(vectorClock);
             UDPServer.setIntervalPackets(intervalPackets);
+            UDPServer.setScalarClock(scalarClock);
 
             consumer = new KafkaConsumer(CONSUMER_TOPICS, currentSensor.id());
             producer = new KafkaProducer(PRODUCER_TOPICS);
@@ -174,8 +192,8 @@ public class Main {
             sortingAndAveragingThread().join();
 
 
-        } catch (SocketException | InterruptedException e) {
-            throw new RuntimeException(e);
+        } catch (Exception e) {
+            System.out.println("kraj");
         }
 
 

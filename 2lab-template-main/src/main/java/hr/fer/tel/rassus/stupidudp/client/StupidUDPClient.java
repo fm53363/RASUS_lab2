@@ -124,6 +124,11 @@ public class StupidUDPClient {
         return true;
     }
 
+    public void close() {
+        socket.close();
+
+    }
+
     @Override
     public String toString() {
         return "Client(server id=" +

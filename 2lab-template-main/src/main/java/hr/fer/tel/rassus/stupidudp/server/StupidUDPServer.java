@@ -28,6 +28,7 @@ public class StupidUDPServer {
 
     private VectorClock vectorClock;
     private Collection<SensorPacket> intervalPackets;
+    private long scalarClock;
 
     public StupidUDPServer(int port, double lossRate, int averageDelay) throws SocketException {
         // create a UDP socket and bind it to the specified port on the local
@@ -47,6 +48,10 @@ public class StupidUDPServer {
 
     public void setIntervalPackets(Collection<SensorPacket> intervalPackets) {
         this.intervalPackets = intervalPackets;
+    }
+
+    public void setScalarClock(long scalarClock) {
+        this.scalarClock = scalarClock;
     }
 
     public int getPort() {
@@ -78,6 +83,7 @@ public class StupidUDPServer {
                 SensorPacket rcvPacket = SensorPacketMapper.toSensorPacket(rcvStr);
                 this.vectorClock.updateAfterReceiving(rcvPacket.getVectorClock());
                 this.intervalPackets.add(rcvPacket);
+                this.setScalarClock(Math.max(this.scalarClock, rcvPacket.getScalarClock()));
             } catch (Exception e) {
                 System.out.println("    Error parsing packet: " + e.getMessage());
             }
