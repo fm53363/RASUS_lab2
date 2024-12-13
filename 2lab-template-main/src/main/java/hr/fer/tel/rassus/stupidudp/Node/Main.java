@@ -126,9 +126,12 @@ public class Main {
         return new Thread(() -> {
             while (true) {
                 synchronized (intervalPackets) {
-                    System.out.println("\n INTERVAL PACKETS");
-                    intervalPackets.forEach(System.out::println);
-                    System.out.println("\n");
+                    if (!intervalPackets.isEmpty()) {
+                        System.out.println("\n INTERVAL PACKETS");
+                        intervalPackets.forEach(System.out::println);
+                        System.out.println("\n");
+                    }
+
                 }
 
 
