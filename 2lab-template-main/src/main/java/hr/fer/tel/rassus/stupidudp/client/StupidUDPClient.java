@@ -91,46 +91,37 @@ public class StupidUDPClient {
         System.out.println("Client received: " + receiveString);
 
         // close the datagram socket
-        //socket.close(); //CLOSE
     }
 
-    public void send1(String sendString) throws IOException {
+    public boolean send1(String sendString) throws IOException {
         byte[] rcvBuf = new byte[256]; // received bytes
-
         // Encode the entire string into a byte array
         byte[] sendBuf = sendString.getBytes();
-
         System.out.println(this + " sends: " + sendString);
-
         // Create a single datagram packet for sending the entire string
         DatagramPacket packet = new DatagramPacket(sendBuf, sendBuf.length, address, this.serverPort);
-
         // Send the datagram packet from this socket
+
         socket.send(packet); // SENDTO
-
-        System.out.println("Packet sent.");
-
+        System.out.println(this + " packet sent.");
         StringBuffer receiveString = new StringBuffer();
+        // Create a datagram packet for receiving data
+        DatagramPacket rcvPacket = new DatagramPacket(rcvBuf, rcvBuf.length);
 
-        while (true) {
-            // Create a datagram packet for receiving data
-            DatagramPacket rcvPacket = new DatagramPacket(rcvBuf, rcvBuf.length);
-
-            try {
-                // Receive a datagram packet from this socket
-                socket.receive(rcvPacket); // RECVFROM
-            } catch (SocketTimeoutException e) {
-                System.out.println("client nije primio potvrdu za " + sendString);
-                break; // Exit the loop on timeout
-            } catch (IOException ex) {
-                Logger.getLogger(StupidUDPClient.class.getName()).log(Level.SEVERE, null, ex);
-            }
-
-            // Decode the received bytes and append them to the received string
-            receiveString.append(new String(rcvPacket.getData(), rcvPacket.getOffset(), rcvPacket.getLength()));
+        try {
+            // Receive a datagram packet from this socket
+            socket.receive(rcvPacket); // RECVFROM
+        } catch (SocketTimeoutException e) {
+            System.out.println(this + " Socket timed out.");
+            return false;
+            // Exit the loop on timeout
+        } catch (IOException ex) {
+            Logger.getLogger(StupidUDPClient.class.getName()).log(Level.SEVERE, null, ex);
         }
-
-        System.out.println(this + " received potvrdu za" + receiveString);
+        // Decode the received bytes and append them to the received string
+        receiveString.append(new String(rcvPacket.getData(), rcvPacket.getOffset(), rcvPacket.getLength()));
+        System.out.println(this + "potvrda " + receiveString);
+        return true;
     }
 
     @Override

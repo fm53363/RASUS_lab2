@@ -26,8 +26,7 @@ public class Main {
     private static final double LOSS_RATE = 0.3;
     private static final int AVERAGE_DELAY = 1000;
     private static final long SEND_INTERVAL_MILLIS = 1000;
-
-
+    private static final long PRINT_INTERVAL_MILLIS = 5000;
     private static final Set<StupidUDPClient> clients = Collections.synchronizedSet(new HashSet<>());
 
 
@@ -38,10 +37,9 @@ public class Main {
     private static MySensorRepo repo = MySensorRepo.getInstance();
     private static boolean FINSIHED = false;
     private static EmulatedSystemClock scalarClock;
-    private static VectorClock vectorClock = new VectorClock();
-
-
-    private static List<SensorPacket> packets = Collections.synchronizedList(new ArrayList<>());
+    private static VectorClock vectorClock;
+    private static List<SensorPacket> packets = Collections.synchronizedList(new LinkedList<>());
+    private static List<SensorPacket> intervalPackets = Collections.synchronizedList(new LinkedList<>());
 
 
     private static Thread udpServerThread() {
@@ -74,7 +72,7 @@ public class Main {
                             try {
                                 clients.add(new StupidUDPClient(tmp, LOSS_RATE, AVERAGE_DELAY));
                                 System.err.println("Imam postavljeno klienta: " + clients.size());
-                                vectorClock.updateVector(tmp.id());
+                                vectorClock.resizeVector(tmp.id() + 1);
                             } catch (UnknownHostException | SocketException e) {
                                 throw new RuntimeException(e);
                             }
@@ -95,11 +93,9 @@ public class Main {
                 int currentReadingId = (int) elapsedTime % repo.getSize();
                 Reading r = repo.getReading(currentReadingId);
                 // create Sensor Packet
-                SensorPacket packet = new SensorPacket.Builder().
-                        scalarTime(scalarClock.currentTimeMillis())
-                        .vectorTime(vectorClock.updateVector(currentSensor.id()).getVector())
-                        .reading(r).
-                        build();
+                vectorClock.updateBeforeSending();
+                SensorPacket packet = new SensorPacket(r, vectorClock, scalarClock.currentTimeMillis());
+
                 synchronized (clients) {
                     for (var client : clients) {
                         String msg = SensorPacketMapper.toJson(packet);
@@ -131,8 +127,14 @@ public class Main {
 
             scalarClock = new EmulatedSystemClock();
 
-            UDPServer = new StupidUDPServer(0, LOSS_RATE, AVERAGE_DELAY);  // stvori udp server
-            currentSensor = new Sensor(id, "localhost", UDPServer.getPort()); // stvori trenutni senzor
+            currentSensor = new Sensor(id, "localhost", UDPServer.getPort());// stvori trenutni senzor
+            vectorClock = new VectorClock(currentSensor.id());
+
+            UDPServer = new StupidUDPServer(0, LOSS_RATE, AVERAGE_DELAY);// stvori udp server
+
+            UDPServer = new StupidUDPServer(0, LOSS_RATE, AVERAGE_DELAY, vectorClock, packets, intervalPackets);// stvori udp server
+
+
             consumer = new KafkaConsumer(CONSUMER_TOPICS, currentSensor.id());
             producer = new KafkaProducer(PRODUCER_TOPICS);
 

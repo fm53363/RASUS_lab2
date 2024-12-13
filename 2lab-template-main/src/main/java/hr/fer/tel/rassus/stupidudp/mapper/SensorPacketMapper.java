@@ -5,8 +5,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import hr.fer.tel.rassus.stupidudp.model.Reading;
 import hr.fer.tel.rassus.stupidudp.model.SensorPacket;
-
-import java.util.List;
+import hr.fer.tel.rassus.stupidudp.model.VectorClock;
 
 public class SensorPacketMapper {
 
@@ -36,17 +35,16 @@ public class SensorPacketMapper {
     }
 
     public static void main(String[] args) {
-        SensorPacket sensorPacket = new SensorPacket.Builder()
-                .reading(new Reading(1))  // Assuming Reading has a constructor
-                .vectorTime(List.of(1L, 2L, 3L))
-                .scalarTime(100L)
-                .build();
+        VectorClock clock = new VectorClock(3);
+        Reading r = new Reading(1);
+        SensorPacket sensorPacket = new SensorPacket(r, clock, 0L);
+
 
         String json = toJson(sensorPacket);
         System.out.println("SensorPacket to JSON: " + json);
 
         // Example of JSON to SensorPacket conversion
-        String jsonString = "{\"reading\":{\"no2\":\"2\"},\"vectorTime\":[1,2,3],\"scalarTime\":100}";
+        String jsonString = "{\"reading\":{\"no2\":1},\"vectorClock\":{\"vector\":[0,0,0,0,0]},\"scalarClock\":0}";
         System.out.println(jsonString.getBytes().length);
         SensorPacket deserializedPacket = toSensorPacket(jsonString);
         System.out.println("JSON to SensorPacket: " + deserializedPacket);

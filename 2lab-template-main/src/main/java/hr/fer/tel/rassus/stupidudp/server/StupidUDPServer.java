@@ -6,6 +6,7 @@ package hr.fer.tel.rassus.stupidudp.server;
 
 import hr.fer.tel.rassus.stupidudp.mapper.SensorPacketMapper;
 import hr.fer.tel.rassus.stupidudp.model.SensorPacket;
+import hr.fer.tel.rassus.stupidudp.model.VectorClock;
 import hr.fer.tel.rassus.stupidudp.network.SimpleSimulatedDatagramSocket;
 
 import java.io.IOException;
@@ -24,11 +25,25 @@ public class StupidUDPServer {
     private double lossRate;
     private int averageDelay;
 
+    private VectorClock vectorClock;
+    private List<SensorPacket> packets;
+    private List<SensorPacket> intervalPackets;
+
+    public StupidUDPServer(int port, double lossRate, int averageDelay, VectorClock vectorClock, List<SensorPacket> packets, List<SensorPacket> intervalPackets) throws SocketException {
+        this(port, lossRate, averageDelay);
+        this.vectorClock = vectorClock;
+        this.packets = packets;
+        this.intervalPackets = intervalPackets;
+    }
+
     public StupidUDPServer(int port, double lossRate, int averageDelay) throws SocketException {
         // create a UDP socket and bind it to the specified port on the local
         // host
+        this.lossRate = lossRate;
+        this.averageDelay = averageDelay;
         this.socket = new SimpleSimulatedDatagramSocket(port, 0.2, 200);
         this.port = socket.getLocalPort();
+
         //SOCKET -> BIND
     }
 
@@ -41,7 +56,7 @@ public class StupidUDPServer {
         byte[] sendBuf = new byte[256];// sent bytes
         String rcvStr;
 
-        System.out.println("Starting UDP server...");
+        System.out.println("    Starting UDP server...");
 
         while (true) { //OBRADA ZAHTJEVA
             // create a DatagramPacket for receiving packets
@@ -55,19 +70,24 @@ public class StupidUDPServer {
             // using the platform's default charset
             rcvStr = new String(packet.getData(), packet.getOffset(),
                     packet.getLength());
-            System.out.println("Server received: " + rcvStr);
+            System.out.println("    Server received: " + rcvStr);
 
             try {
                 SensorPacket rcvPacket = SensorPacketMapper.toSensorPacket(rcvStr);
+                this.vectorClock.updateAfterReceiving(rcvPacket.getVectorClock());
+                this.intervalPackets.add(rcvPacket);
+                this.packets.add(rcvPacket);
             } catch (Exception e) {
-                System.out.println("Error parsing packet: " + e.getMessage());
+                System.out.println("    Error parsing packet: " + e.getMessage());
             }
             //list.add(SensorPacketMapper.toSensorPacket(rcvStr));
 
             // encode a String into a sequence of bytes using the platform's
             // default charset
-            sendBuf = rcvStr.toUpperCase().getBytes();
-            System.out.println("Server sends: " + rcvStr.toUpperCase());
+            //sendBuf = rcvStr.toUpperCase().getBytes();
+            String msg = "P:" + SensorPacketMapper.toSensorPacket(rcvStr).getReading().toString();
+            sendBuf = msg.getBytes();
+            System.out.println("    Server sends: " + msg);
 
             // create a DatagramPacket for sending packets
             DatagramPacket sendPacket = new DatagramPacket(sendBuf,

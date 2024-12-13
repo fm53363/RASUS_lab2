@@ -1,21 +1,18 @@
 package hr.fer.tel.rassus.stupidudp.model;
 
 
-import java.util.List;
-
 public class SensorPacket {
     private Reading reading;
-    private List<Long> vectorTime;
-    private long scalarTime;
-
-    private SensorPacket(Reading reading, List<Long> vectorTime, long scalarTime) {
-        this.reading = reading;
-        this.vectorTime = vectorTime;
-        this.scalarTime = scalarTime;
-    }
+    private VectorClock vectorClock;
+    private long scalarClock;
 
     public SensorPacket() {
+    }
 
+    public SensorPacket(Reading reading, VectorClock vectorClock, long scalarClock) {
+        this.reading = reading;
+        this.vectorClock = vectorClock;
+        this.scalarClock = scalarClock;
     }
 
     public Reading getReading() {
@@ -26,49 +23,19 @@ public class SensorPacket {
         this.reading = reading;
     }
 
-    public List<Long> getVectorTime() {
-        return vectorTime;
+    public VectorClock getVectorClock() {
+        return vectorClock;
     }
 
-    public void setVectorTime(List<Long> vectorTime) {
-        this.vectorTime = vectorTime;
+    public void setVectorClock(VectorClock vectorClock) {
+        this.vectorClock = vectorClock;
     }
 
-    public long getScalarTime() {
-        return scalarTime;
+    public long getScalarClock() {
+        return scalarClock;
     }
 
-    public void setScalarTime(long scalarTime) {
-        this.scalarTime = scalarTime;
+    public void setScalarClock(long scalarClock) {
+        this.scalarClock = scalarClock;
     }
-
-    public static class Builder {
-        private Reading reading;
-        private List<Long> vectorTime;
-        private long scalarTime;
-
-        public Builder reading(Reading reading) {
-            this.reading = reading;
-            return this;
-        }
-
-        public Builder vectorTime(List<Long> vectorTime) {
-            this.vectorTime = vectorTime;
-            return this;
-        }
-
-        public Builder scalarTime(long scalarTime) {
-            this.scalarTime = scalarTime;
-            return this;
-        }
-
-        public SensorPacket build() {
-            SensorPacket sensorPacket = new SensorPacket(reading, vectorTime, scalarTime);
-            return sensorPacket;
-
-        }
-
-    }
-
-
 }
