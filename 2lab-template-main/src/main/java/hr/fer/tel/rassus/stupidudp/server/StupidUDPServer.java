@@ -29,13 +29,6 @@ public class StupidUDPServer {
     private List<SensorPacket> packets;
     private List<SensorPacket> intervalPackets;
 
-    public StupidUDPServer(int port, double lossRate, int averageDelay, VectorClock vectorClock, List<SensorPacket> packets, List<SensorPacket> intervalPackets) throws SocketException {
-        this(port, lossRate, averageDelay);
-        this.vectorClock = vectorClock;
-        this.packets = packets;
-        this.intervalPackets = intervalPackets;
-    }
-
     public StupidUDPServer(int port, double lossRate, int averageDelay) throws SocketException {
         // create a UDP socket and bind it to the specified port on the local
         // host
@@ -45,6 +38,18 @@ public class StupidUDPServer {
         this.port = socket.getLocalPort();
 
         //SOCKET -> BIND
+    }
+
+    public void setVectorClock(VectorClock vectorClock) {
+        this.vectorClock = vectorClock;
+    }
+
+    public void setPackets(List<SensorPacket> packets) {
+        this.packets = packets;
+    }
+
+    public void setIntervalPackets(List<SensorPacket> intervalPackets) {
+        this.intervalPackets = intervalPackets;
     }
 
     public int getPort() {

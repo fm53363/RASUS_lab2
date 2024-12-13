@@ -91,21 +91,24 @@ public class Main {
             while (true) {
                 elapsedTime = (System.currentTimeMillis() - startTime) / 1000;
                 int currentReadingId = (int) elapsedTime % repo.getSize();
-                Reading r = repo.getReading(currentReadingId);
-                // create Sensor Packet
-                vectorClock.updateBeforeSending();
-                SensorPacket packet = new SensorPacket(r, vectorClock, scalarClock.currentTimeMillis());
+
 
                 synchronized (clients) {
-                    for (var client : clients) {
-                        String msg = SensorPacketMapper.toJson(packet);
-                        try {
-                            client.send1(msg);
-                            while (!client.send1(msg)) {
-                                System.out.println("RETRANSMISIJA " + msg);
+                    if (!clients.isEmpty()) {
+                        Reading r = repo.getReading(currentReadingId);
+                        // create Sensor Packet
+                        vectorClock.updateBeforeSending();
+                        SensorPacket packet = new SensorPacket(r, vectorClock, scalarClock.currentTimeMillis());
+                        for (var client : clients) {
+                            String msg = SensorPacketMapper.toJson(packet);
+                            try {
+                                client.send1(msg);
+                                while (!client.send1(msg)) {
+                                    System.out.println("RETRANSMISIJA " + msg);
+                                }
+                            } catch (IOException e) {
+                                throw new RuntimeException(e);
                             }
-                        } catch (IOException e) {
-                            throw new RuntimeException(e);
                         }
                     }
                 }
@@ -127,12 +130,17 @@ public class Main {
 
             scalarClock = new EmulatedSystemClock();
 
+
+            UDPServer = new StupidUDPServer(0, LOSS_RATE, AVERAGE_DELAY);// stvori udp server
             currentSensor = new Sensor(id, "localhost", UDPServer.getPort());// stvori trenutni senzor
             vectorClock = new VectorClock(currentSensor.id());
 
-            UDPServer = new StupidUDPServer(0, LOSS_RATE, AVERAGE_DELAY);// stvori udp server
 
-            UDPServer = new StupidUDPServer(0, LOSS_RATE, AVERAGE_DELAY, vectorClock, packets, intervalPackets);// stvori udp server
+            UDPServer.setVectorClock(vectorClock);
+            UDPServer.setIntervalPackets(intervalPackets);
+            UDPServer.setPackets(packets);
+
+            //UDPServer = new StupidUDPServer(0, LOSS_RATE, AVERAGE_DELAY, vectorClock, packets, intervalPackets);// stvori udp server
 
 
             consumer = new KafkaConsumer(CONSUMER_TOPICS, currentSensor.id());

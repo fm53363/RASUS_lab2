@@ -17,9 +17,13 @@ public class VectorClock {
 
     public VectorClock(int id) {
         this.vectorClock = new ArrayList<>(id + 1);
-        for (int i = 0; i <= id + 1; i++) {
+        for (int i = 0; i <= id; i++) {
             vectorClock.add(0L);
         }
+        this.id = id;
+    }
+
+    public void setId(int id) {
         this.id = id;
     }
 
@@ -28,30 +32,34 @@ public class VectorClock {
     }
 
     public void updateBeforeSending() {
+        System.out.println("    before sending:" + this.getVector());
         this.vectorClock.set(id, vectorClock.get(id) + 1);
+        System.out.println("    after sending:" + this.getVector());
     }
 
     public void updateAfterReceiving(VectorClock other) {
+        System.out.println("    before receiving:" + this.getVector());
         if (other.vectorClock.size() > this.vectorClock.size()) {
-            resizeVector(other.vectorClock.size());
+            this.resizeVector(other.vectorClock.size());
         }
         for (int i = 0; i < this.vectorClock.size(); i++) {
             long old = (i < other.getVector().size()) ? other.getVector().get(i) : 0L;
             long newValue = Math.max(this.vectorClock.get(i), old);
             this.vectorClock.set(i, newValue);
         }
-        this.updateBeforeSending();
+        this.vectorClock.set(id, vectorClock.get(id) + 1);
+
+        System.out.println("    after receiving:" + this.getVector());
     }
 
 
     public void resizeVector(int newSize) {
         // no resizing
-        if (id >= 0 && id < vectorClock.size()) {
+        if (newSize >= 0 && newSize <= vectorClock.size()) {
             return;
         }
-
         int start = vectorClock.size();
-        for (int i = start; i < start + newSize; i++) {
+        for (int i = start; i < newSize; i++) {
             vectorClock.add(0L);
         }
     }
