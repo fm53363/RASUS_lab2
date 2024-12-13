@@ -37,7 +37,7 @@ public class Main {
     private static MySensorRepo repo = MySensorRepo.getInstance();
     private static boolean FINSIHED = false;
     private static EmulatedSystemClock scalarClock;
-    private static VectorClock vectorClock;
+    private static volatile VectorClock vectorClock;
     private static List<SensorPacket> packets = Collections.synchronizedList(new LinkedList<>());
     private static Set<SensorPacket> intervalPackets = Collections.synchronizedSet(new HashSet<>());
 
