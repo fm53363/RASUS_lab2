@@ -1,42 +1,54 @@
 package hr.fer.tel.rassus.stupidudp.model;
 
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import java.util.ArrayList;
 import java.util.List;
 
-public class  VectorClock {
+public class VectorClock {
     private List<Long> vectorClock = new ArrayList<>();
+    @JsonIgnore
+    private int id;
 
-    public VectorClock() {
-        this.vectorClock = new ArrayList<>();
+    public VectorClock(int id) {
+        this.vectorClock = new ArrayList<>(id + 1);
+        for (int i = 0; i <= id + 1; i++) {
+            vectorClock.add(0L);
+        }
+        this.id = id;
     }
 
     public List<Long> getVector() {
         return vectorClock;
     }
 
-    public VectorClock updateVector(int id) {
-        // update existing vector time
-        if (id >= 0 && id < vectorClock.size()) {
-            long old = vectorClock.get(id) == null ? -1 : vectorClock.get(id);
-            vectorClock.set(id,  old+1);  // Just an example of setting it
-        }else{
-            var updatedVectorClock = new ArrayList<Long>();
-            for (int i = 0; i < id; i++) {
-                try {
-                    long old = vectorClock.get(i);
-                    updatedVectorClock.add(old);
-                } catch(Exception e) {
-                    updatedVectorClock.add(null);
-                }
-            }
-            updatedVectorClock.add(0L);
-            vectorClock = updatedVectorClock;
-        }
-        return this;
-
+    public void updateBeforeSending() {
+        this.vectorClock.set(id, vectorClock.get(id) + 1);
     }
 
+    public void updateAfterReceiving(VectorClock other) {
+        if (other.vectorClock.size() > this.vectorClock.size()) {
+            resizeVector(other.vectorClock.size());
+        }
+        for (int i = 0; i < this.vectorClock.size(); i++) {
+            long old = (i < other.getVector().size()) ? other.getVector().get(i) : 0L;
+            long newValue = Math.max(this.vectorClock.get(i), old);
+            this.vectorClock.set(i, newValue);
+        }
+        this.updateBeforeSending();
+    }
+
+    public void resizeVector(int newSize) {
+        // no resizing
+        if (id >= 0 && id < vectorClock.size()) {
+            return;
+        }
+        int start = vectorClock.size();
+        for (int i = start; i < start + newSize; i++) {
+            vectorClock.add(0L);
+        }
+    }
 
 
 }

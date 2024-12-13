@@ -94,7 +94,7 @@ public class StupidUDPClient {
         //socket.close(); //CLOSE
     }
 
-    public void send1(String sendString) throws IOException {
+    public boolean send1(String sendString) throws IOException {
         byte[] rcvBuf = new byte[256]; // received bytes
 
         // Encode the entire string into a byte array
@@ -112,25 +112,26 @@ public class StupidUDPClient {
 
         StringBuffer receiveString = new StringBuffer();
 
-        while (true) {
-            // Create a datagram packet for receiving data
-            DatagramPacket rcvPacket = new DatagramPacket(rcvBuf, rcvBuf.length);
 
-            try {
-                // Receive a datagram packet from this socket
-                socket.receive(rcvPacket); // RECVFROM
-            } catch (SocketTimeoutException e) {
-                System.out.println("client nije primio potvrdu za " + sendString);
-                break; // Exit the loop on timeout
-            } catch (IOException ex) {
-                Logger.getLogger(StupidUDPClient.class.getName()).log(Level.SEVERE, null, ex);
-            }
+        // Create a datagram packet for receiving data
+        DatagramPacket rcvPacket = new DatagramPacket(rcvBuf, rcvBuf.length);
 
-            // Decode the received bytes and append them to the received string
-            receiveString.append(new String(rcvPacket.getData(), rcvPacket.getOffset(), rcvPacket.getLength()));
+        try {
+            // Receive a datagram packet from this socket
+            socket.receive(rcvPacket); // RECVFROM
+        } catch (SocketTimeoutException e) {
+            System.out.println("client nije primio potvrdu za " + sendString);
+            return false;
+        } catch (IOException ex) {
+            Logger.getLogger(StupidUDPClient.class.getName()).log(Level.SEVERE, null, ex);
         }
 
+        // Decode the received bytes and append them to the received string
+        receiveString.append(new String(rcvPacket.getData(), rcvPacket.getOffset(), rcvPacket.getLength()));
+
+
         System.out.println(this + " received potvrdu za" + receiveString);
+        return true;
     }
 
     @Override
